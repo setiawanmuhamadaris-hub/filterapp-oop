@@ -1,5 +1,8 @@
 package com.filterapp;
 
+import com.filterapp.controllers.ImageController;
+import com.filterapp.filters.*;
+
 import javafx.application.Application;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
