@@ -1,0 +1,11 @@
+target/
+scratch/
+*.class
+.classpath
+.project
+.settings/
+*.log
+.DS_Store
+
+*.onnx
+*.onnx.data
