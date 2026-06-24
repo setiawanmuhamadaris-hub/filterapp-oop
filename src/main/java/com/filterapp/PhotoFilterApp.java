@@ -7,6 +7,7 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.Group;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -45,6 +46,8 @@ public class PhotoFilterApp extends Application {
     // UI overlays
     private GridPane gridOverlay;
     private ProgressIndicator loadingIndicator;
+    private VBox uploadPlaceholder;
+    private Button btnDelete;
 
     @Override
     public void start(Stage primaryStage) {
@@ -75,7 +78,40 @@ public class PhotoFilterApp extends Application {
         loadingIndicator.setMaxSize(50, 50);
         loadingIndicator.setVisible(false);
 
-        StackPane imageContainer = new StackPane(imageView, gridOverlay, loadingIndicator);
+        uploadPlaceholder = new VBox(15);
+        uploadPlaceholder.setAlignment(Pos.CENTER);
+        uploadPlaceholder.setMaxSize(300, 200);
+        uploadPlaceholder.setStyle("-fx-border-color: #555; -fx-border-width: 2; -fx-border-style: dashed; -fx-border-radius: 10; -fx-background-color: transparent; -fx-cursor: hand;");
+        
+        javafx.scene.shape.SVGPath uploadIcon = new javafx.scene.shape.SVGPath();
+        uploadIcon.setContent("M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z");
+        uploadIcon.setFill(javafx.scene.paint.Color.web("#888888"));
+        uploadIcon.setScaleX(3);
+        uploadIcon.setScaleY(3);
+        uploadIcon.setTranslateY(10);
+        
+        Label uploadLabel = new Label("Klik untuk Upload Foto");
+        uploadLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 16px; -fx-font-weight: bold;");
+        uploadLabel.setTranslateY(15);
+        
+        uploadPlaceholder.getChildren().addAll(uploadIcon, uploadLabel);
+        
+        uploadPlaceholder.setOnMouseEntered(e -> {
+            uploadPlaceholder.setStyle("-fx-border-color: #4CAF50; -fx-border-width: 2; -fx-border-style: dashed; -fx-border-radius: 10; -fx-background-color: rgba(76, 175, 80, 0.1); -fx-cursor: hand;");
+            uploadIcon.setFill(javafx.scene.paint.Color.web("#4CAF50"));
+            uploadLabel.setStyle("-fx-text-fill: #4CAF50; -fx-font-size: 16px; -fx-font-weight: bold;");
+        });
+        uploadPlaceholder.setOnMouseExited(e -> {
+            uploadPlaceholder.setStyle("-fx-border-color: #555; -fx-border-width: 2; -fx-border-style: dashed; -fx-border-radius: 10; -fx-background-color: transparent; -fx-cursor: hand;");
+            uploadIcon.setFill(javafx.scene.paint.Color.web("#888888"));
+            uploadLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 16px; -fx-font-weight: bold;");
+        });
+        uploadPlaceholder.setOnMouseClicked(e -> handleUpload(primaryStage));
+
+        StackPane innerStack = new StackPane(imageView, gridOverlay);
+        Group imageGroup = new Group(innerStack);
+
+        StackPane imageContainer = new StackPane(imageGroup, uploadPlaceholder, loadingIndicator);
         imageContainer.setAlignment(Pos.CENTER);
         imageContainer.setPadding(new Insets(20));
 
@@ -140,13 +176,19 @@ public class PhotoFilterApp extends Application {
         topBar.setStyle("-fx-background-color:#2b2b2b;");
         topBar.setAlignment(Pos.CENTER_LEFT);
 
-        Button btnUpload = new Button("Upload Foto");
+        btnDelete = new Button("\uD83D\uDDD1 Hapus Foto");
+        btnDelete.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-cursor: hand;");
+        btnDelete.setVisible(false);
+        btnDelete.setManaged(false);
+        btnDelete.setOnMouseEntered(e -> btnDelete.setStyle("-fx-background-color: #d32f2f; -fx-text-fill: white; -fx-cursor: hand;"));
+        btnDelete.setOnMouseExited(e -> btnDelete.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-cursor: hand;"));
+        btnDelete.setOnAction(e -> handleClearImage());
+
         Button btnSave   = new Button("Simpan");
         Button btnReset  = new Button("Reset");
-        btnUpload.setOnAction(e -> handleUpload(primaryStage));
         btnSave  .setOnAction(e -> handleSave(primaryStage));
         btnReset .setOnAction(e -> handleReset());
-        topBar.getChildren().addAll(btnUpload, btnSave, btnReset);
+        topBar.getChildren().addAll(btnDelete, btnSave, btnReset);
         root.setTop(topBar);
 
         // ---------- Sidebar ----------
@@ -319,16 +361,58 @@ public class PhotoFilterApp extends Application {
     }
 
     private ScrollPane createFiltersPane() {
-        VBox pane = new VBox(10);
-        pane.setPadding(new Insets(20));
+        GridPane grid = new GridPane();
+        grid.setPadding(new Insets(20));
+        grid.setHgap(10);
+        grid.setVgap(10);
 
-        for (String name : new String[]{"None","Grayscale","Sepia","Blur","Sharpen","Watercolor Paint","BW Portrait"}) {
+        ColumnConstraints col1 = new ColumnConstraints();
+        col1.setPercentWidth(50);
+        ColumnConstraints col2 = new ColumnConstraints();
+        col2.setPercentWidth(50);
+        grid.getColumnConstraints().addAll(col1, col2);
+
+        String[] names = {"None", "Grayscale", "Sepia", "Blur", "Sharpen", "Watercolor Paint", "BW Portrait"};
+        String[] imageFiles = {
+            "sample_normal.jpg",
+            "sample_grayscale.jpg",
+            "sample_sepia.jpg",
+            "sample_blur.jpg",
+            "sample_sharpen.jpg",
+            "sample_watercolor_paint.jpg",
+            "sample_BW_potrait.jpg"
+        };
+
+        for (int i = 0; i < names.length; i++) {
+            String name = names[i];
+            String imagePath = "file:media/" + imageFiles[i];
+
             Button btn = new Button(name);
+            btn.setContentDisplay(ContentDisplay.TOP);
             btn.setMaxWidth(Double.MAX_VALUE);
+            btn.setStyle("-fx-background-color: transparent; -fx-border-color: #555; -fx-border-radius: 5; -fx-text-fill: white; -fx-cursor: hand;");
+
+            try {
+                Image img = new Image(imagePath, 120, 120, true, true);
+                ImageView iv = new ImageView(img);
+                iv.setFitWidth(100);
+                iv.setFitHeight(100);
+                iv.setPreserveRatio(true);
+                btn.setGraphic(iv);
+            } catch (Exception ex) {
+                // Fallback if image not found
+            }
+
+            btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: #4CAF50; -fx-border-color: #4CAF50; -fx-border-radius: 5; -fx-text-fill: white; -fx-cursor: hand;"));
+            btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: transparent; -fx-border-color: #555; -fx-border-radius: 5; -fx-text-fill: white; -fx-cursor: hand;"));
+
             btn.setOnAction(e -> { controller.setBaseFilter(name); updateBaseImageAsync(); });
-            pane.getChildren().add(btn);
+
+            grid.add(btn, i % 2, i / 2);
+            GridPane.setHgrow(btn, Priority.ALWAYS);
         }
-        ScrollPane sp = new ScrollPane(pane);
+
+        ScrollPane sp = new ScrollPane(grid);
         sp.setFitToWidth(true);
         sp.setStyle("-fx-background:#2b2b2b;-fx-border-color:transparent;");
         return sp;
@@ -375,6 +459,9 @@ public class PhotoFilterApp extends Application {
         if (file == null) return;
         try {
             controller.uploadImage(file);
+            uploadPlaceholder.setVisible(false);
+            btnDelete.setVisible(true);
+            btnDelete.setManaged(true);
             currentCropRatio = 0; currentPanX = 0.5; currentPanY = 0.5; currentCropZoom = 1.0;
             brightnessSlider.setValue(0); contrastSlider.setValue(0); saturationSlider.setValue(0);
             fadeSlider.setValue(0); temperatureSlider.setValue(0); vignetteSlider.setValue(0);
@@ -384,6 +471,22 @@ public class PhotoFilterApp extends Application {
         } catch (Exception ex) {
             showAlert(Alert.AlertType.ERROR, "Error", "Gagal memuat gambar: " + ex.getMessage());
         }
+    }
+
+    private void handleClearImage() {
+        controller.clearImage();
+        imageView.setImage(null);
+        imageView.setViewport(null);
+        basePreviewFxImage = null;
+
+        currentCropRatio = 0; currentPanX = 0.5; currentPanY = 0.5; currentCropZoom = 1.0;
+        brightnessSlider.setValue(0); contrastSlider.setValue(0); saturationSlider.setValue(0);
+        fadeSlider.setValue(0); temperatureSlider.setValue(0); vignetteSlider.setValue(0);
+
+        uploadPlaceholder.setVisible(true);
+        btnDelete.setVisible(false);
+        btnDelete.setManaged(false);
+        gridOverlay.setVisible(false);
     }
 
     private void handleReset() {

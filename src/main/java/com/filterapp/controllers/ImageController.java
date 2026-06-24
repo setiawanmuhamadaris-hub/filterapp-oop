@@ -45,6 +45,15 @@ public class ImageController {
         resetFilters();
     }
 
+    public void clearImage() {
+        originalImage = null;
+        originalPreviewImage = null;
+        baseFilteredImage = null;
+        previewBaseImage = null;
+        filteredPreviewImage = null;
+        resetAllSettings();
+    }
+
     public void resetFilters() {
         baseFilterName = "None";
         brightnessLevel = 0;
