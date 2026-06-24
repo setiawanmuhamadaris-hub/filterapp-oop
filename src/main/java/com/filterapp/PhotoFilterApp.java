@@ -48,6 +48,8 @@ public class PhotoFilterApp extends Application {
     private ProgressIndicator loadingIndicator;
     private VBox uploadPlaceholder;
     private Button btnDelete;
+    private Button btnPreview;
+    private Stage currentPreviewStage;
 
     @Override
     public void start(Stage primaryStage) {
@@ -176,7 +178,7 @@ public class PhotoFilterApp extends Application {
         topBar.setStyle("-fx-background-color:#2b2b2b;");
         topBar.setAlignment(Pos.CENTER_LEFT);
 
-        btnDelete = new Button("\uD83D\uDDD1 Hapus Foto");
+        btnDelete = new Button("Hapus Foto");
         btnDelete.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-cursor: hand;");
         btnDelete.setVisible(false);
         btnDelete.setManaged(false);
@@ -184,11 +186,19 @@ public class PhotoFilterApp extends Application {
         btnDelete.setOnMouseExited(e -> btnDelete.setStyle("-fx-background-color: #f44336; -fx-text-fill: white; -fx-cursor: hand;"));
         btnDelete.setOnAction(e -> handleClearImage());
 
+        btnPreview = new Button("Pratinjau");
+        btnPreview.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-cursor: hand;");
+        btnPreview.setVisible(false);
+        btnPreview.setManaged(false);
+        btnPreview.setOnMouseEntered(e -> btnPreview.setStyle("-fx-background-color: #1976D2; -fx-text-fill: white; -fx-cursor: hand;"));
+        btnPreview.setOnMouseExited(e -> btnPreview.setStyle("-fx-background-color: #2196F3; -fx-text-fill: white; -fx-cursor: hand;"));
+        btnPreview.setOnAction(e -> showPreviewDialog());
+
         Button btnSave   = new Button("Simpan");
         Button btnReset  = new Button("Reset");
         btnSave  .setOnAction(e -> handleSave(primaryStage));
         btnReset .setOnAction(e -> handleReset());
-        topBar.getChildren().addAll(btnDelete, btnSave, btnReset);
+        topBar.getChildren().addAll(btnPreview, btnDelete, btnSave, btnReset);
         root.setTop(topBar);
 
         // ---------- Sidebar ----------
@@ -462,6 +472,8 @@ public class PhotoFilterApp extends Application {
             uploadPlaceholder.setVisible(false);
             btnDelete.setVisible(true);
             btnDelete.setManaged(true);
+            btnPreview.setVisible(true);
+            btnPreview.setManaged(true);
             currentCropRatio = 0; currentPanX = 0.5; currentPanY = 0.5; currentCropZoom = 1.0;
             brightnessSlider.setValue(0); contrastSlider.setValue(0); saturationSlider.setValue(0);
             fadeSlider.setValue(0); temperatureSlider.setValue(0); vignetteSlider.setValue(0);
@@ -486,6 +498,8 @@ public class PhotoFilterApp extends Application {
         uploadPlaceholder.setVisible(true);
         btnDelete.setVisible(false);
         btnDelete.setManaged(false);
+        btnPreview.setVisible(false);
+        btnPreview.setManaged(false);
         gridOverlay.setVisible(false);
     }
 
@@ -525,6 +539,53 @@ public class PhotoFilterApp extends Application {
         a.setHeaderText(null);
         a.setContentText(msg);
         a.showAndWait();
+    }
+
+    private void showPreviewDialog() {
+        if (controller.getOriginalImage() == null || controller.getFilteredImage() == null) {
+            showAlert(Alert.AlertType.WARNING, "Peringatan", "Gambar belum siap untuk dipratinjau!");
+            return;
+        }
+
+        if (currentPreviewStage != null && currentPreviewStage.isShowing()) {
+            currentPreviewStage.toFront();
+            return;
+        }
+
+        currentPreviewStage = new Stage();
+        currentPreviewStage.setTitle("Pratinjau Perbandingan - Asli vs Hasil Edit");
+
+        Image originalImg = SwingFXUtils.toFXImage(controller.getOriginalImage(), null);
+        Image filteredImg = SwingFXUtils.toFXImage(controller.getFilteredImage(), null);
+
+        ImageView originalView = new ImageView(originalImg);
+        originalView.setPreserveRatio(true);
+        originalView.setFitWidth(400);
+        originalView.setFitHeight(400);
+
+        ImageView filteredView = new ImageView(filteredImg);
+        filteredView.setPreserveRatio(true);
+        filteredView.setFitWidth(400);
+        filteredView.setFitHeight(400);
+
+        VBox leftBox = new VBox(10, new Label("Original / Asli"), originalView);
+        leftBox.setAlignment(Pos.CENTER);
+        
+        VBox rightBox = new VBox(10, new Label("Filtered / Hasil Edit"), filteredView);
+        rightBox.setAlignment(Pos.CENTER);
+
+        HBox layout = new HBox(20, leftBox, rightBox);
+        layout.setAlignment(Pos.CENTER);
+        layout.setPadding(new Insets(20));
+        layout.setStyle("-fx-background-color: #1e1e1e;");
+
+        // Set style label manually since we don't apply CSS file here
+        leftBox.getChildren().get(0).setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px;");
+        rightBox.getChildren().get(0).setStyle("-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 16px;");
+
+        Scene scene = new Scene(layout);
+        currentPreviewStage.setScene(scene);
+        currentPreviewStage.show();
     }
 
     public static void main(String[] args) { launch(args); }
